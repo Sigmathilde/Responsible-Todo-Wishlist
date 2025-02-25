@@ -124,13 +124,55 @@
             font-size: 22px;
             cursor: pointer;
         }
+
+                .input-group {
+            display: flex;
+            flex-direction: column;
+            margin-top: 10px;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .preview-container {
+    position: relative;
+    width: 100%;
+    height: 150px; /* Adjust the height as needed */
+    background: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#image-wrapper {
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+#edit-preview {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Ensures the image scales within the box */
+}
+
+
     </style>
 </head>
 <body>
+    <h1>Betcha Wishlist</h1>
     <div class="wishlist-container">
         <div class="wishlist" id="wishlist">
             <div class="wishlist-item" onclick="openEditModal(this)">
-                <span class="title">New Item</span>
+                <span class="title">Item name</span>
                 <span class="delete-item" onclick="confirmDelete(event, this.parentElement)">&times;</span>
             </div>
         </div>
@@ -140,14 +182,23 @@
         <div class="modal-content">
             <span class="close" onclick="closeEditModal()">&times;</span>
             <h2>Edit Item</h2>
-            <div class="preview-container" onclick="triggerImageUpload()">
-                <span class="upload-text">Click to upload image</span>
-                <img id="edit-preview" src="" alt="Preview" hidden>
-            </div>
             <input type="file" id="edit-item-file" accept="image/*" hidden>
-            <input type="text" id="edit-item-url" placeholder="Or enter image URL" class="input-group">
+            <div class="preview-container" onclick="triggerImageUpload()" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 150px; background: #e0e0e0; border-radius: 10px; cursor: pointer; overflow: hidden;">
+                <div id="image-wrapper" style="position: absolute; cursor: grab;">
+                    <img id="edit-preview" src="placeholder.jpg" alt="Click to upload image" style="max-width: 100%; height: auto; display: block;">
+                </div>
+            </div>
             <div class="input-group">
                 <input type="text" id="edit-item-name" placeholder="Item Name">
+            </div>
+            <div class="input-group">
+                <textarea id="edit-item-description" placeholder="Description" rows="3"></textarea>
+            </div>
+            <div class="input-group">
+                <input type="number" id="edit-item-price" placeholder="Price">
+            </div>
+            <div class="input-group">
+                <input type="url" id="edit-item-link" placeholder="Link to find item">
             </div>
             <button id="save-edit" class="btn" onclick="saveChanges()">Save Changes</button>
         </div>
@@ -184,11 +235,92 @@
         }
 
         function saveChanges() {
-            if (currentEditingItem) {
-                currentEditingItem.querySelector('.title').textContent = document.getElementById('edit-item-name').value;
-            }
-            closeEditModal();
+    if (currentEditingItem) {
+        currentEditingItem.querySelector('.title').textContent = document.getElementById('edit-item-name').value;
+        currentEditingItem.dataset.description = document.getElementById('edit-item-description').value;
+        currentEditingItem.dataset.price = document.getElementById('edit-item-price').value;
+        currentEditingItem.dataset.link = document.getElementById('edit-item-link').value;
+        let imgElement = currentEditingItem.querySelector('img');
+        if (!imgElement) {
+            imgElement = document.createElement('img');
+            currentEditingItem.appendChild(imgElement);
         }
+        imgElement.src = document.getElementById('edit-preview').src;
+    }
+    closeEditModal();
+}
+
+    function triggerImageUpload() {
+        document.getElementById('edit-item-file').click();
+    }
+
+    document.getElementById('edit-item-file').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('edit-preview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    let scale = 1, translateX = 0, translateY = 0;
+const imageWrapper = document.getElementById('image-wrapper');
+let isDragging = false, startX, startY, currentX, currentY;
+
+imageWrapper.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    imageWrapper.style.cursor = "grabbing";
+});
+
+document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+
+    // Get container dimensions
+    const containerRect = previewContainer.getBoundingClientRect();
+    const imageRect = imageWrapper.getBoundingClientRect();
+
+    // Calculate new positions
+    let newX = e.clientX - startX;
+    let newY = e.clientY - startY;
+
+    // Ensure the image stays within the gray area
+    const minX = 0;
+    const minY = 0;
+    const maxX = containerRect.width - imageRect.width;
+    const maxY = containerRect.height - imageRect.height;
+
+    translateX = Math.max(minX, Math.min(newX, maxX));
+    translateY = Math.max(minY, Math.min(newY, maxY));
+
+    updateTransform();
+});
+
+
+document.addEventListener("mouseup", () => {
+    isDragging = false;
+    imageWrapper.style.cursor = "grab";
+});
+
+function updateTransform() {
+    imageWrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+}
+
+// Zoom using the mouse wheel
+imageWrapper.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    scale += e.deltaY * -0.001;
+    scale = Math.min(Math.max(0.5, scale), 3); // Limit zoom range
+    updateTransform();
+});
+
+
+
+
+
     </script>
 </body>
 </html>
